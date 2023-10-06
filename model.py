@@ -3,8 +3,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 
+
 class DINOHead(nn.Module):
-    def __init__(self, in_dim, out_dim, use_bn=False, norm_last_layer=True, 
+    def __init__(self, in_dim, out_dim, use_bn=False, norm_last_layer=True,
                  nlayers=3, hidden_dim=2048, bottleneck_dim=256):
         super().__init__()
         nlayers = max(nlayers, 1)
@@ -55,10 +56,12 @@ class ContrastiveLearningViewGenerator(object):
         else:
             return [self.base_transform[i](x) for i in range(self.n_views)]
 
+
 class SupConLoss(torch.nn.Module):
     """Supervised Contrastive Learning: https://arxiv.org/pdf/2004.11362.pdf.
     It also supports the unsupervised contrastive loss in SimCLR
     From: https://github.com/HobbitLong/SupContrast"""
+
     def __init__(self, temperature=0.07, contrast_mode='all',
                  base_temperature=0.07):
         super(SupConLoss, self).__init__()
@@ -147,7 +150,6 @@ class SupConLoss(torch.nn.Module):
         return loss
 
 
-
 def info_nce_logits(features, n_views=2, temperature=1.0, device='cuda'):
 
     b_ = 0.5 * int(features.size(0))
@@ -193,7 +195,7 @@ def get_params_groups(model):
 
 
 class DistillLoss(nn.Module):
-    def __init__(self, warmup_teacher_temp_epochs, nepochs, 
+    def __init__(self, warmup_teacher_temp_epochs, nepochs,
                  ncrops=2, warmup_teacher_temp=0.07, teacher_temp=0.04,
                  student_temp=0.1):
         super().__init__()
