@@ -1,0 +1,6 @@
+{
+    "python.analysis.extraPaths": [
+        "./submodules/GCDdatasets",
+        "./submodules/GCDdatasets/submodules/polycraft-novelty-data",
+    ]
+}

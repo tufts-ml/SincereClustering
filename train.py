@@ -8,17 +8,17 @@ from torch.optim import SGD, lr_scheduler
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from data.augmentations import get_transform
-from data.get_datasets import get_datasets, get_class_splits
+from gcd_data.get_datasets import get_datasets, get_class_splits
 
+from config import exp_root
+from data.augmentations import get_transform
 from util.general_utils import AverageMeter, init_experiment
 from util.cluster_and_log_utils import log_accs_from_preds
-from config import exp_root
 from model import DINOHead, info_nce_logits, SupConLoss, DistillLoss, \
     ContrastiveLearningViewGenerator, get_params_groups
 
 
-def train(student, train_loader, test_loader, unlabelled_train_loader, args):
+def train(student, train_loader, test_loader, unlabeled_train_loader, args):
     params_groups = get_params_groups(student)
     optimizer = SGD(params_groups, lr=args.lr, momentum=args.momentum,
                     weight_decay=args.weight_decay)
@@ -107,9 +107,9 @@ def train(student, train_loader, test_loader, unlabelled_train_loader, args):
 
         args.logger.info('Train Epoch: {} Avg Loss: {:.4f} '.format(epoch, loss_record.avg))
 
-        args.logger.info('Testing on unlabelled examples in the training data...')
+        args.logger.info('Testing on unlabeled examples in the training data...')
         all_acc, old_acc, new_acc = test(
-            student, unlabelled_train_loader, epoch=epoch, save_name='Train ACC Unlabelled',
+            student, unlabeled_train_loader, epoch=epoch, save_name='Train ACC Unlabeled',
             args=args)
 
         args.logger.info('Train Accuracies: All {:.4f} | Old {:.4f} | New {:.4f}'.format(
@@ -153,7 +153,6 @@ def test(model, test_loader, epoch, save_name, args):
 
 
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser(
         description='cluster', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--batch_size', default=128, type=int)
@@ -163,7 +162,7 @@ if __name__ == "__main__":
 
     parser.add_argument('--warmup_model_dir', type=str, default=None)
     parser.add_argument(
-        '--dataset_name', type=str, default='scars',
+        '--dataset_name', type=str, default='cifar10',
         help='options: cifar10, cifar100, imagenet_100, cub, scars, fgvc_aricraft, herbarium_19')
     parser.add_argument('--prop_train_labels', type=float, default=0.5)
     parser.add_argument('--use_ssb_splits', action='store_true', default=True)
@@ -191,9 +190,7 @@ if __name__ == "__main__":
     parser.add_argument('--print_freq', default=10, type=int)
     parser.add_argument('--exp_name', default=None, type=str)
 
-    # ----------------------
     # INIT
-    # ----------------------
     args = parser.parse_args()
     device = torch.device('cuda:0')
     args = get_class_splits(args)
@@ -206,12 +203,36 @@ if __name__ == "__main__":
 
     torch.backends.cudnn.benchmark = True
 
-    # ----------------------
-    # BASE MODEL
-    # ----------------------
+    # CONTRASTIVE TRANSFORM
     args.interpolation = 3
     args.crop_pct = 0.875
+    train_transform, test_transform = get_transform(
+        args.transform, image_size=args.image_size, args=args)
+    train_transform = ContrastiveLearningViewGenerator(
+        base_transform=train_transform, n_views=args.n_views)
 
+    # DATASETS
+    train_dataset, test_dataset, unlabeled_train_examples_test, datasets = get_datasets(
+        args.dataset_name, train_transform, test_transform, args)
+
+    # SAMPLER
+    # Sampler which balances labeled and unlabeled examples in each batch
+    label_len = len(train_dataset.labeled_dataset)
+    unlabeled_len = len(train_dataset.unlabeled_dataset)
+    sample_weights = [1 if i < label_len else label_len /
+                      unlabeled_len for i in range(len(train_dataset))]
+    sample_weights = torch.DoubleTensor(sample_weights)
+    sampler = torch.utils.data.WeightedRandomSampler(sample_weights, num_samples=len(train_dataset))
+
+    # DATALOADERS
+    train_loader = DataLoader(
+        train_dataset, num_workers=args.num_workers, batch_size=args.batch_size, shuffle=False,
+        sampler=sampler, drop_last=True, pin_memory=True)
+    test_loader_unlabeled = DataLoader(
+        unlabeled_train_examples_test, num_workers=args.num_workers,
+        batch_size=256, shuffle=False, pin_memory=False)
+
+    # BASE MODEL
     backbone = torch.hub.load('facebookresearch/dino:main', 'dino_vitb16')
 
     if args.warmup_model_dir is not None:
@@ -224,9 +245,7 @@ if __name__ == "__main__":
     args.num_mlp_layers = 3
     args.mlp_out_dim = args.num_labeled_classes + args.num_unlabeled_classes
 
-    # ----------------------
     # HOW MUCH OF BASE MODEL TO FINETUNE
-    # ----------------------
     for m in backbone.parameters():
         m.requires_grad = False
 
@@ -239,49 +258,11 @@ if __name__ == "__main__":
 
     args.logger.info('model build')
 
-    # --------------------
-    # CONTRASTIVE TRANSFORM
-    # --------------------
-    train_transform, test_transform = get_transform(
-        args.transform, image_size=args.image_size, args=args)
-    train_transform = ContrastiveLearningViewGenerator(
-        base_transform=train_transform, n_views=args.n_views)
-    # --------------------
-    # DATASETS
-    # --------------------
-    train_dataset, test_dataset, unlabelled_train_examples_test, datasets = get_datasets(
-        args.dataset_name, train_transform, test_transform, args)
-
-    # --------------------
-    # SAMPLER
-    # Sampler which balances labelled and unlabelled examples in each batch
-    # --------------------
-    label_len = len(train_dataset.labelled_dataset)
-    unlabelled_len = len(train_dataset.unlabelled_dataset)
-    sample_weights = [1 if i < label_len else label_len /
-                      unlabelled_len for i in range(len(train_dataset))]
-    sample_weights = torch.DoubleTensor(sample_weights)
-    sampler = torch.utils.data.WeightedRandomSampler(sample_weights, num_samples=len(train_dataset))
-
-    # --------------------
-    # DATALOADERS
-    # --------------------
-    train_loader = DataLoader(
-        train_dataset, num_workers=args.num_workers, batch_size=args.batch_size, shuffle=False,
-        sampler=sampler, drop_last=True, pin_memory=True)
-    test_loader_unlabelled = DataLoader(
-        unlabelled_train_examples_test, num_workers=args.num_workers,
-        batch_size=256, shuffle=False, pin_memory=False)
-
-    # ----------------------
     # PROJECTION HEAD
-    # ----------------------
     projector = DINOHead(in_dim=args.feat_dim, out_dim=args.mlp_out_dim,
                          nlayers=args.num_mlp_layers)
     model = nn.Sequential(backbone, projector).to(device)
 
-    # ----------------------
     # TRAIN
-    # ----------------------
-    # train(model, train_loader, test_loader_labelled, test_loader_unlabelled, args)
-    train(model, train_loader, None, test_loader_unlabelled, args)
+    # train(model, train_loader, test_loader_labeled, test_loader_unlabeled, args)
+    train(model, train_loader, None, test_loader_unlabeled, args)
