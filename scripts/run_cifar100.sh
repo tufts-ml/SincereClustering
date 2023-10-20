@@ -3,7 +3,7 @@
 set -e
 set -x
 
-CUDA_VISIBLE_DEVICES=0 python train.py \
+CUDA_VISIBLE_DEVICES=0 pipenv run python train.py \
     --dataset_name 'cifar100' \
     --batch_size 128 \
     --grad_from_block 11 \
