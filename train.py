@@ -46,7 +46,6 @@ def train(student, train_loader, test_loader, unlabeled_train_loader, args):
         student.train()
         for batch_idx, batch in enumerate(train_loader):
             images, class_labels, uq_idxs, mask_lab = batch
-            mask_lab = mask_lab[:, 0]
 
             class_labels, mask_lab = class_labels.cuda(
                 non_blocking=True), mask_lab.cuda(non_blocking=True).bool()
