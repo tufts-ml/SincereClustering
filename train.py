@@ -202,6 +202,12 @@ if __name__ == "__main__":
 
     torch.backends.cudnn.benchmark = True
 
+    # NOTE: Hardcoded image size as we do not finetune the entire ViT model
+    args.image_size = 224
+    args.feat_dim = 768
+    args.num_mlp_layers = 3
+    args.mlp_out_dim = args.num_labeled_classes + args.num_unlabeled_classes
+
     # CONTRASTIVE TRANSFORM
     args.interpolation = 3
     args.crop_pct = 0.875
@@ -237,12 +243,6 @@ if __name__ == "__main__":
     if args.warmup_model_dir is not None:
         args.logger.info(f'Loading weights from {args.warmup_model_dir}')
         backbone.load_state_dict(torch.load(args.warmup_model_dir, map_location='cpu'))
-
-    # NOTE: Hardcoded image size as we do not finetune the entire ViT model
-    args.image_size = 224
-    args.feat_dim = 768
-    args.num_mlp_layers = 3
-    args.mlp_out_dim = args.num_labeled_classes + args.num_unlabeled_classes
 
     # HOW MUCH OF BASE MODEL TO FINETUNE
     for m in backbone.parameters():
