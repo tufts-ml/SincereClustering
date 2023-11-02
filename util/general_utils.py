@@ -5,8 +5,10 @@ import inspect
 from datetime import datetime
 from loguru import logger
 
+
 class AverageMeter(object):
     """Computes and stores the average and current value"""
+
     def __init__(self):
         self.reset()
 
@@ -28,7 +30,8 @@ class AverageMeter(object):
 def init_experiment(args, runner_name=None, exp_id=None):
     # Get filepath of calling script
     if runner_name is None:
-        runner_name = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))).split(".")[-2:]
+        runner_name = os.path.dirname(os.path.abspath(
+            inspect.getfile(inspect.currentframe()))).split(".")[-2:]
 
     root_dir = os.path.join(args.exp_root, *runner_name)
 
@@ -41,13 +44,15 @@ def init_experiment(args, runner_name=None, exp_id=None):
         if args.exp_name is None:
             raise ValueError("Need to specify the experiment name")
         # Unique identifier for experiment
-        now = '{}_({:02d}.{:02d}.{}_|_'.format(args.exp_name, datetime.now().day, datetime.now().month, datetime.now().year) + \
-              datetime.now().strftime("%S.%f")[:-3] + ')'
+        now = '{}_({:02d}.{:02d}.{}_|_'.format(
+            args.exp_name, datetime.now().day, datetime.now().month, datetime.now().year) + \
+            datetime.now().strftime("%S.%f")[:-3] + ')'
 
         log_dir = os.path.join(root_dir, 'log', now)
         while os.path.exists(log_dir):
-            now = '({:02d}.{:02d}.{}_|_'.format(datetime.now().day, datetime.now().month, datetime.now().year) + \
-                  datetime.now().strftime("%S.%f")[:-3] + ')'
+            now = '({:02d}.{:02d}.{}_|_'.format(
+                datetime.now().day, datetime.now().month, datetime.now().year) + \
+                datetime.now().strftime("%S.%f")[:-3] + ')'
 
             log_dir = os.path.join(root_dir, 'log', now)
 
@@ -57,8 +62,7 @@ def init_experiment(args, runner_name=None, exp_id=None):
 
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-        
-        
+
     logger.add(os.path.join(log_dir, 'log.txt'))
     args.logger = logger
     args.log_dir = log_dir
@@ -105,8 +109,9 @@ class DistributedWeightedSampler(torch.utils.data.distributed.DistributedSampler
         self.num_samples = self.num_samples // self.num_replicas
 
     def __iter__(self):
-        rand_tensor = torch.multinomial(self.weights, self.num_samples, self.replacement, generator=self.generator)
-        rand_tensor =  self.rank + rand_tensor * self.num_replicas
+        rand_tensor = torch.multinomial(self.weights, self.num_samples,
+                                        self.replacement, generator=self.generator)
+        rand_tensor = self.rank + rand_tensor * self.num_replicas
         yield from iter(rand_tensor.tolist())
 
     def __len__(self):

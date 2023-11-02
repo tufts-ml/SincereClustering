@@ -9,13 +9,15 @@ def all_sum_item(item):
     dist.all_reduce(item)
     return item.item()
 
+
 def split_cluster_acc_v2(y_true, y_pred, mask):
     """
     Calculate clustering accuracy. Require scikit-learn installed
     First compute linear assignment on all data, then look at how good the accuracy is on subsets
 
     # Arguments
-        mask: Which instances come from old classes (True) and which ones come from new classes (False)
+        mask: Which instances come from old classes (True) and
+              which ones come from new classes (False)
         y: true labels, numpy.array with shape `(n_samples,)`
         y_pred: predicted labels, numpy.array with shape `(n_samples,)`
 
@@ -28,8 +30,8 @@ def split_cluster_acc_v2(y_true, y_pred, mask):
     new_classes_gt = set(y_true[~mask])
 
     assert y_pred.size == y_true.size
-    D = max(y_pred.max(), y_true.max()) + 1
-    w = np.zeros((D, D), dtype=int)
+    d = max(y_pred.max(), y_true.max()) + 1
+    w = np.zeros((d, d), dtype=int)
     for i in range(y_pred.size):
         w[y_pred[i], y_true[i]] += 1
 
@@ -39,11 +41,11 @@ def split_cluster_acc_v2(y_true, y_pred, mask):
     ind_map = {j: i for i, j in ind}
     total_acc = sum([w[i, j] for i, j in ind])
     total_instances = y_pred.size
-    try: 
+    try:
         if dist.get_world_size() > 0:
             total_acc = all_sum_item(total_acc)
             total_instances = all_sum_item(total_instances)
-    except:
+    except Exception:
         pass
     total_acc /= total_instances
 
@@ -52,12 +54,12 @@ def split_cluster_acc_v2(y_true, y_pred, mask):
     for i in old_classes_gt:
         old_acc += w[ind_map[i], i]
         total_old_instances += sum(w[:, i])
-    
+
     try:
         if dist.get_world_size() > 0:
             old_acc = all_sum_item(old_acc)
             total_old_instances = all_sum_item(total_old_instances)
-    except:
+    except Exception:
         pass
     old_acc /= total_old_instances
 
@@ -66,12 +68,12 @@ def split_cluster_acc_v2(y_true, y_pred, mask):
     for i in new_classes_gt:
         new_acc += w[ind_map[i], i]
         total_new_instances += sum(w[:, i])
-    
+
     try:
         if dist.get_world_size() > 0:
             new_acc = all_sum_item(new_acc)
             total_new_instances = all_sum_item(total_new_instances)
-    except:
+    except Exception:
         pass
     new_acc /= total_new_instances
 
@@ -84,7 +86,8 @@ def split_cluster_acc_v2_balanced(y_true, y_pred, mask):
     First compute linear assignment on all data, then look at how good the accuracy is on subsets
 
     # Arguments
-        mask: Which instances come from old classes (True) and which ones come from new classes (False)
+        mask: Which instances come from old classes (True) and
+              which ones come from new classes (False)
         y: true labels, numpy.array with shape `(n_samples,)`
         y_pred: predicted labels, numpy.array with shape `(n_samples,)`
 
@@ -97,8 +100,8 @@ def split_cluster_acc_v2_balanced(y_true, y_pred, mask):
     new_classes_gt = set(y_true[~mask])
 
     assert y_pred.size == y_true.size
-    D = max(y_pred.max(), y_true.max()) + 1
-    w = np.zeros((D, D), dtype=int)
+    d = max(y_pred.max(), y_true.max()) + 1
+    w = np.zeros((d, d), dtype=int)
     for i in range(y_pred.size):
         w[y_pred[i], y_true[i]] += 1
 
@@ -125,11 +128,13 @@ def split_cluster_acc_v2_balanced(y_true, y_pred, mask):
             dist.all_reduce(old_acc), dist.all_reduce(new_acc)
             dist.all_reduce(total_old_instances), dist.all_reduce(total_new_instances)
             old_acc, new_acc = old_acc.cpu().numpy(), new_acc.cpu().numpy()
-            total_old_instances, total_new_instances = total_old_instances.cpu().numpy(), total_new_instances.cpu().numpy()
-    except:
+            total_old_instances, total_new_instances = total_old_instances.cpu(
+            ).numpy(), total_new_instances.cpu().numpy()
+    except Exception:
         pass
 
-    total_acc = np.concatenate([old_acc, new_acc]) / np.concatenate([total_old_instances, total_new_instances])
+    total_acc = np.concatenate([old_acc, new_acc]) / \
+        np.concatenate([total_old_instances, total_new_instances])
     old_acc /= total_old_instances
     new_acc /= total_new_instances
     total_acc, old_acc, new_acc = total_acc.mean(), old_acc.mean(), new_acc.mean()
@@ -141,9 +146,9 @@ EVAL_FUNCS = {
     'v2b': split_cluster_acc_v2_balanced
 }
 
+
 def log_accs_from_preds(y_true, y_pred, mask, eval_funcs, save_name, T=None,
                         print_output=True, args=None):
-
     """
     Given a list of evaluation functions to use (e.g ['v1', 'v2']) evaluate and log ACC results
 
@@ -176,9 +181,9 @@ def log_accs_from_preds(y_true, y_pred, mask, eval_funcs, save_name, T=None,
                 if dist.get_rank() == 0:
                     try:
                         args.logger.info(print_str)
-                    except:
+                    except Exception:
                         print(print_str)
-            except:
+            except Exception:
                 pass
 
     return to_return
