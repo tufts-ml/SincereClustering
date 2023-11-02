@@ -192,25 +192,28 @@ if __name__ == "__main__":
     # INIT
     args = parser.parse_args()
     device = torch.device('cuda:0')
-    args = get_class_splits(args)
 
+    # dataset args
+    args = get_class_splits(args)
     args.num_labeled_classes = len(args.train_classes)
     args.num_unlabeled_classes = len(args.unlabeled_classes)
+
+    # model args; hardcoded image size as we do not finetune the entire ViT model
+    args.image_size = 224
+    args.feat_dim = 768
+    args.num_mlp_layers = 3
+    args.mlp_out_dim = args.num_labeled_classes + args.num_unlabeled_classes
+
+    # transform args
+    args.interpolation = 3
+    args.crop_pct = 0.875
 
     init_experiment(args, runner_name=['simgcd'])
     args.logger.info(f'Using evaluation function {args.eval_funcs[0]} to print results')
 
     torch.backends.cudnn.benchmark = True
 
-    # NOTE: Hardcoded image size as we do not finetune the entire ViT model
-    args.image_size = 224
-    args.feat_dim = 768
-    args.num_mlp_layers = 3
-    args.mlp_out_dim = args.num_labeled_classes + args.num_unlabeled_classes
-
     # CONTRASTIVE TRANSFORM
-    args.interpolation = 3
-    args.crop_pct = 0.875
     train_transform, test_transform = get_transform(
         args.transform, image_size=args.image_size, args=args)
     train_transform = ContrastiveLearningViewGenerator(
