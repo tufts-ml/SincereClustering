@@ -49,6 +49,7 @@ def train(student, train_loader, test_loader, unlabeled_train_loader, args):
 
             class_labels, mask_lab = class_labels.cuda(
                 non_blocking=True), mask_lab.cuda(non_blocking=True).bool()
+            # TODO add strong/weak embeddings and keep images separate
             images = torch.cat(images, dim=0).cuda(non_blocking=True)
 
             with torch.cuda.amp.autocast(fp16_scaler is not None):
@@ -56,23 +57,27 @@ def train(student, train_loader, test_loader, unlabeled_train_loader, args):
                 teacher_out = student_out.detach()
 
                 # clustering, sup
+                # TODO replace with TempCELoss
                 sup_logits = torch.cat([f[mask_lab] for f in (student_out / 0.1).chunk(2)], dim=0)
                 sup_labels = torch.cat([class_labels[mask_lab] for _ in range(2)], dim=0)
                 cls_loss = nn.CrossEntropyLoss()(sup_logits, sup_labels)
 
                 # clustering, unsup
                 cluster_loss = cluster_criterion(student_out, teacher_out, epoch)
+                # TODO replace with TempMeanEntropyLoss
                 avg_probs = (student_out / 0.1).softmax(dim=1).mean(dim=0)
                 me_max_loss = - torch.sum(torch.log(avg_probs**(-avg_probs))
                                           ) + math.log(float(len(avg_probs)))
                 cluster_loss += args.memax_weight * me_max_loss
 
                 # represent learning, unsup
+                # TODO replace with InfoNCELoss
                 contrastive_logits, contrastive_labels = info_nce_logits(features=student_proj)
                 contrastive_loss = torch.nn.CrossEntropyLoss()(
                     contrastive_logits, contrastive_labels)
 
                 # representation learning, sup
+                # TODO replace with SINCERE
                 student_proj = torch.cat([f[mask_lab].unsqueeze(1)
                                          for f in student_proj.chunk(2)], dim=1)
                 student_proj = torch.nn.functional.normalize(student_proj, dim=-1)
