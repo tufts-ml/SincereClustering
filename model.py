@@ -36,7 +36,7 @@ class DINOHead(nn.Module):
                 nn.init.constant_(m.bias, 0)
 
     def forward(self, x):
-        x_proj = self.mlp(x)
+        x_proj = nn.functional.normalize(self.mlp(x), dim=-1, p=2)
         x = nn.functional.normalize(x, dim=-1, p=2)
         # x = x.detach()
         logits = self.last_layer(x)
