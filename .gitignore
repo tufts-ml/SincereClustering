@@ -1,7 +1,6 @@
 __pycache__
 dev_outputs
 .pytest_cache
-.vscode
 build
 reqlib-metadata
 *.egg-info
