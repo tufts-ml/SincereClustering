@@ -26,6 +26,7 @@ pep8-naming = "*"
 pytest = "*"
 gcd-data = {editable = true, path = "./submodules/GCDdatasets"}
 polycraft-nov-data = {editable = true, path = "./submodules/GCDdatasets/submodules/polycraft-novelty-data"}
+sincere = {editable = true, path = "."}
 
 [torch_cpu]
 torch = {index="pytorch_cpu"}
