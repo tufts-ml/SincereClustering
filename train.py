@@ -270,6 +270,9 @@ if __name__ == "__main__":
                          nlayers=args.num_mlp_layers)
     model = nn.Sequential(backbone, projector).to(device)
 
+    # print args for log
+    print(args)
+
     # TRAIN
     # train(model, train_loader, test_loader_labeled, test_loader_unlabeled, args)
     train(model, train_loader, None, test_loader_unlabeled, args)
