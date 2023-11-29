@@ -1,4 +1,8 @@
 #!/bin/bash
+#SBATCH -p ccgpu,gpu
+#SBATCH -t 1-12:0:0
+#SBATCH --gres=gpu:a100:1
+#SBATCH -c 9
 
 set -e
 set -x
