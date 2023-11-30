@@ -52,7 +52,7 @@ class SINCERELoss(nn.Module):
         # entries not in numerator set to 0
         ce = -1 * (numer_logits - log_denom)
         # take average over rows with entry count then average over batch
-        loss = torch.sum(ce / numer_count) / ce.shape[0]
+        loss = torch.sum(ce / numer_count.to(ce.device)) / ce.shape[0]
         return loss
 
 
