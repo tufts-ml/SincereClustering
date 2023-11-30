@@ -130,4 +130,4 @@ class TempMeanEntropyLoss(nn.Module):
         """
         avg_preds = (logits / self.temperature).softmax(dim=1).mean(dim=0)
         # no negative because entropy should be maximized
-        return avg_preds.T @ torch.log(avg_preds)
+        return torch.dot(avg_preds, torch.log(avg_preds))
