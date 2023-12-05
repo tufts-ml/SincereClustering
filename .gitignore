@@ -4,3 +4,4 @@ dev_outputs
 build
 reqlib-metadata
 *.egg-info
+slurm

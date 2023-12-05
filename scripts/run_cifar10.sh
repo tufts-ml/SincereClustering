@@ -3,6 +3,7 @@
 #SBATCH -t 0-3:0:0
 #SBATCH --gres=gpu:a100:1
 #SBATCH -c 9
+#SBATCH -o ./slurm/output.%a.out
 
 set -e
 set -x
