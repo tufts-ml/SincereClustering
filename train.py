@@ -64,8 +64,8 @@ def train(student, train_loader, test_loader, unlabeled_train_loader, args):
 
                 # clustering, sup
                 sup_logits = torch.cat(
-                    [f[mask_lab] for f in [student_logits1, student_logits2]], dim=0)
-                sup_labels = torch.cat([class_labels[mask_lab] for _ in range(2)], dim=0)
+                    [student_logits1[mask_lab], student_logits2[mask_lab]], dim=0)
+                sup_labels = torch.cat([class_labels[mask_lab]] * 2, dim=0)
                 cls_loss = losses.TempCELoss(0.1)(sup_logits, sup_labels)
 
                 # clustering, unsup
@@ -80,7 +80,7 @@ def train(student, train_loader, test_loader, unlabeled_train_loader, args):
                 # representation learning, sup
                 # TODO replace with SINCERE
                 student_proj = torch.stack(
-                    [f[mask_lab] for f in [student_proj1, student_proj2]], dim=1)
+                    [student_proj1[mask_lab], student_proj2[mask_lab]], dim=1)
                 sup_con_labels = class_labels[mask_lab]
                 sup_con_loss = SupConLoss()(student_proj, labels=sup_con_labels)
 
