@@ -12,7 +12,7 @@ CUDA_VISIBLE_DEVICES=0 pipenv run python -m cProfile -o stats.out train.py \
     --dataset_name 'cifar10' \
     --batch_size 128 \
     --grad_from_block 11 \
-    --epochs 200 \
+    --epochs 1 \
     --num_workers 8 \
     --use_ssb_splits \
     --sup_weight 0.35 \
