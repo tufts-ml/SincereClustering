@@ -1,12 +1,10 @@
 import argparse
 
-import math
 import numpy as np
 import torch
 import torch.nn as nn
 from torch.optim import SGD, lr_scheduler
 from torch.utils.data import DataLoader
-from tqdm import tqdm
 
 from gcd_data.get_datasets import get_datasets, get_class_splits
 import sincere.losses as losses
@@ -57,12 +55,14 @@ def train(student, train_loader, test_loader, unlabeled_train_loader, args):
             images1, images2 = images1.cuda(non_blocking=True), images2.cuda(non_blocking=True)
 
             with torch.cuda.amp.autocast(fp16_scaler is not None):
+                # TODO test if single forward faster
                 student_proj1, student_logits1 = student(images1)
                 student_proj2, student_logits2 = student(images2)
                 student_out = torch.cat([student_logits1, student_logits2], dim=0)
                 teacher_out = student_out.detach()
 
                 # clustering, sup
+                # TODO check values against original implementation
                 sup_logits = torch.cat(
                     [student_logits1[mask_lab], student_logits2[mask_lab]], dim=0)
                 sup_labels = torch.cat([class_labels[mask_lab]] * 2, dim=0)
@@ -138,17 +138,17 @@ def test(model, test_loader, epoch, save_name, args):
 
     preds, targets = [], []
     mask = np.array([])
-    for batch_idx, (images, label, _) in enumerate(tqdm(test_loader)):
+    for batch_idx, (images, label, _) in enumerate(test_loader):
         images = images.cuda(non_blocking=True)
         with torch.no_grad():
             _, logits = model(images)
-            preds.append(logits.argmax(1).cpu().numpy())
-            targets.append(label.cpu().numpy())
+            preds.append(logits.argmax(1))
+            targets.append(label)
             mask = np.append(mask, np.array([True if x.item() in range(
                 len(args.train_classes)) else False for x in label]))
 
-    preds = np.concatenate(preds)
-    targets = np.concatenate(targets)
+    preds = torch.concat(preds).cpu().numpy()
+    targets = torch.concat(targets).cpu().numpy()
     all_acc, old_acc, new_acc = log_accs_from_preds(
         y_true=targets, y_pred=preds, mask=mask, T=epoch, eval_funcs=args.eval_funcs,
         save_name=save_name, args=args)
